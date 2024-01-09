@@ -1,4 +1,5 @@
 import os
+import random
 import dotenv
 import tkinter as tk
 from tkinter import ttk
@@ -64,11 +65,11 @@ server_terminator = None
 
 
 def run_client():
-    if client_button.cget("text") == "Run Client":
-        client_button.config(text="Stop Client")
+    if client_button.cget("text") == client_button_text_status[0]:
+        client_button.config(text=client_button_text_status[1])
         run_script(client_response_box)
     else:
-        client_button.config(text="Run Client")
+        client_button.config(text=client_button_text_status[0])
         save_communications(client_response_box.get("1.0", "end-1c"))
         client_response_box.delete("1.0", "end")
 
@@ -109,18 +110,22 @@ root = tk.Tk()
 root.title("EVCC Application")
 root.geometry("700x800")
 
+client_button_text_status = ["Connect EV", "Disconnect EV"]
 
-client_button = tk.Button(root, text="Run Client", command=run_client, height=2)
+
+client_button = tk.Button(
+    root, text=client_button_text_status[0], command=run_client, height=2
+)
 client_button.grid(row=0, column=0, sticky="nsew")
 
 
-frame = ttk.Frame(root, padding=(10, 10, 10, 10))
-frame.grid(row=0, column=1, sticky="nsew")
+config_frame = ttk.Frame(root, padding=(10, 10, 10, 10))
+config_frame.grid(row=0, column=1, sticky="nsew")
 
 
 message_log_json_var = tk.BooleanVar(value=(os.environ["MESSAGE_LOG_JSON"]))
 message_log_json_checkbox = ttk.Checkbutton(
-    frame,
+    config_frame,
     text="MESSAGE LOG JSON",
     variable=message_log_json_var,
     command=message_log_json_changed,
@@ -130,7 +135,7 @@ message_log_json_checkbox.grid(row=0, column=0, sticky="w")
 
 message_log_exi_var = tk.BooleanVar(value=(os.environ["MESSAGE_LOG_EXI"]))
 message_log_json_checkbox = ttk.Checkbutton(
-    frame,
+    config_frame,
     text="MESSAGE LOG EXI",
     variable=message_log_exi_var,
     command=message_log_exi_changed,
@@ -143,7 +148,10 @@ selected_option = tk.StringVar(
     value=log_level_options[log_level_options.index(os.environ["LOG_LEVEL"])]
 )
 combobox = ttk.Combobox(
-    frame, values=log_level_options, textvariable=selected_option, state="readonly"
+    config_frame,
+    values=log_level_options,
+    textvariable=selected_option,
+    state="readonly",
 )
 combobox.grid(row=2, column=0, sticky="nsew")
 combobox.bind("<<ComboboxSelected>>", on_log_level_changed)
@@ -151,6 +159,20 @@ combobox.bind("<<ComboboxSelected>>", on_log_level_changed)
 
 client_response_box = tk.Text(root)
 client_response_box.grid(row=1, column=0, columnspan=2, sticky="nsew")
+
+
+status_bar = ttk.Frame(root)
+status_bar.grid(row=2, column=0, columnspan=2, sticky="nsew")
+
+
+battery_value_label = tk.Label(status_bar, text=f"Battery : {random.randint(0 , 100)}%")
+battery_value_label.grid(row=0, column=0, sticky="w")
+
+is_plugged_label = tk.Label(status_bar, text="Is Plugged : ")
+is_plugged_label.grid(row=0, column=1, sticky="nsew")
+is_plugged_checkbox = tk.Checkbutton(status_bar, state="disabled")
+is_plugged_checkbox.grid(row=0, column=2, sticky="nsew")
+status_bar.grid_columnconfigure(0, weight=1)
 
 
 root.grid_rowconfigure(1, weight=1)

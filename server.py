@@ -68,9 +68,9 @@ server_terminator = None
 def run_server():
     global server_terminator
 
-    if server_button.cget("text") == "Run Server":
+    if server_button.cget("text") == server_button_text_states[0]:
         server_response_box.delete("1.0", "end")
-        server_button.config(text="Stop Server")
+        server_button.config(text=server_button_text_states[1])
         server_terminator = run_script(server_response_box)
     else:
         server_button.config(state=tk.DISABLED)
@@ -78,7 +78,7 @@ def run_server():
             print("Terminating server...")
             server_terminator()
         server_button.config(state=tk.NORMAL)
-        server_button.config(text="Run Server")
+        server_button.config(text=server_button_text_states[0])
         server_response_box.delete("1.0", "end")
 
 
@@ -119,7 +119,12 @@ root.title("SECC Application")
 root.geometry("700x800")
 
 
-server_button = tk.Button(root, text="Run Server", command=run_server, height=2)
+server_button_text_states = ["Start SECC", "Stop SECC"]
+
+
+server_button = tk.Button(
+    root, text=server_button_text_states, command=run_server, height=2
+)
 server_button.grid(row=0, column=0, sticky="nsew")
 
 
