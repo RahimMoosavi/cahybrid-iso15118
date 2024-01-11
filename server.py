@@ -116,22 +116,22 @@ dotenv.load_dotenv(dotenv_file)
 root = tk.Tk()
 
 root.title("SECC Application")
-root.geometry("700x800")
+root.geometry("760x850")
 
 
 server_button_text_states = ["Start SECC", "Stop SECC"]
 
 
 server_button = tk.Button(
-    root, text=server_button_text_states, command=run_server, height=2
+    root, text=server_button_text_states[0], command=run_server, height=2
 )
 server_button.grid(row=0, column=0, sticky="nsew")
 
 
+# Setting frame
+
 frame = ttk.Frame(root, padding=(10, 10, 10, 10))
 frame.grid(row=0, column=1, sticky="nsew")
-
-
 message_log_json_var = tk.BooleanVar(value=(os.environ["MESSAGE_LOG_JSON"]))
 message_log_json_checkbox = ttk.Checkbutton(
     frame,
@@ -140,8 +140,6 @@ message_log_json_checkbox = ttk.Checkbutton(
     command=message_log_json_changed,
 )
 message_log_json_checkbox.grid(row=0, column=0, sticky="w")
-
-
 message_log_exi_var = tk.BooleanVar(value=(os.environ["MESSAGE_LOG_EXI"]))
 message_log_json_checkbox = ttk.Checkbutton(
     frame,
@@ -150,8 +148,6 @@ message_log_json_checkbox = ttk.Checkbutton(
     command=message_log_exi_changed,
 )
 message_log_json_checkbox.grid(row=1, column=0, sticky="w")
-
-
 log_level_options = ["INFO", "DEBUG"]
 selected_option = tk.StringVar(
     value=log_level_options[log_level_options.index(os.environ["LOG_LEVEL"])]
@@ -162,13 +158,22 @@ combobox = ttk.Combobox(
 combobox.grid(row=2, column=0, sticky="nsew")
 combobox.bind("<<ComboboxSelected>>", on_log_level_changed)
 
+# Inputs frame
+
+user_inputs_frame = ttk.Frame(root, padding=(10, 10, 10, 10))
+user_inputs_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
+user_inputs_frame.grid_columnconfigure(0, weight=1)
+charge_limit_label = tk.Label(user_inputs_frame, text="Charge Limit")
+charge_limit_input = tk.Text(user_inputs_frame, height=2)
+charge_limit_label.grid(row=0, column=0, sticky="w")
+charge_limit_input.grid(row=0, column=1, sticky="nsew")
+
 
 server_response_box = tk.Text(root)
-server_response_box.grid(row=1, column=0, columnspan=2, sticky="nsew")
+server_response_box.grid(row=2, column=0, columnspan=2, sticky="nsew")
 
 
-root.grid_rowconfigure(1, weight=1)
+root.grid_rowconfigure(2, weight=1)
 root.grid_columnconfigure(0, weight=1)
-
 root.protocol("WM_DELETE_WINDOW", on_closing)
 root.mainloop()
