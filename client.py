@@ -10,6 +10,65 @@ from threading import Thread
 import subprocess
 import time
 
+import http.server
+import socketserver
+import json
+import os
+import sys
+
+
+class CustomHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # Check if the requested path is the root path ("/")
+        if self.path == "/":
+            # Construct the full path to the JSON file
+            json_file_path = os.path.join(os.getcwd(), communication_file)
+
+            # Check if the JSON file exists
+            if os.path.exists(json_file_path):
+                # Set the response headers
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+
+                # Open and read the JSON file, then send its content as the response
+                with open(json_file_path, "rb") as json_file:
+                    self.wfile.write(json_file.read())
+            else:
+                # If the JSON file does not exist, send a 404 response
+                self.send_error(404, "File Not Found: {}".format(json_file_name))
+        else:
+            # If the requested path is not the root, serve it as usual
+            super().do_GET()
+
+
+def start_http_server():
+    global httpd
+    try:
+        httpd = socketserver.TCPServer(("0.0.0.0", PORT), CustomHandler)
+        print("Serving at port", PORT)
+        stop_server.httpd = httpd
+        httpd.serve_forever()
+    except Exception as e:
+        print(e)
+        httpd.shutdown()
+        sys.exit(0)
+
+
+def start_server():
+    global httpd_thread, httpd
+    httpd_thread = Thread(target=start_http_server)
+    httpd_thread.start()
+
+
+def stop_server():
+    global httpd
+    if httpd:
+        httpd.shutdown()
+        httpd.server_close()
+        httpd_thread.join()  # Wait for the thread to finish
+        httpd = None  # Reset httpd to None after stopping
+
 
 def run_script(text_widget):
     def target():
@@ -53,6 +112,7 @@ def on_closing():
         client_button.config(state=tk.DISABLED)
         server_terminator()
         client_button.config(state=tk.NORMAL)
+    stop_server()
     root.destroy()
 
 
@@ -67,6 +127,7 @@ def save_communications(communications):
 
 
 server_terminator = None
+httpd = None
 
 
 def run_client():
@@ -148,15 +209,14 @@ def sync_with_server():
     try:
         with open(communication_file, "r") as f:
             data = json.load(f)
-            max_charge_power_input.config(state=tk.NORMAL)
-            max_charge_power_input.delete("1.0", tk.END)
-            max_charge_power_input.insert("1.0", data["max_charge_power"])
-            max_charge_power_input.config(state=tk.DISABLED)
-
+            max_discharge_power_t = max_discharge_power_input.get("1.0", "end-1c")
             if max_discharge_power_input.get("1.0", "end-1c") == "":
                 max_discharge_power_input.delete("1.0", tk.END)
                 max_discharge_power_input.insert("1.0", data["max_discharge_power"])
-            elif not server_terminator:
+            elif (
+                not server_terminator
+                and int(max_discharge_power_t) != data["max_discharge_power"]
+            ):
                 update_communication_file(
                     data,
                     "max_discharge_power",
@@ -164,14 +224,16 @@ def sync_with_server():
                 )
 
             # TODO: SHould check if the connection is happened correctly
+            present_soc_t = present_soc_input.get("1.0", "end-1c")
             if present_soc_input.get("1.0", "end-1c") == "":
                 present_soc_input.delete("1.0", tk.END)
                 present_soc_input.insert("1.0", data["present_soc"])
-            if server_terminator and data["present_soc"] < 100:
+            elif server_terminator and data["present_soc"] < 100:
                 if delayed_run:
                     sync_time = large_delay_time
                     delayed_run = False
                 else:
+                    v = min(data["present_soc"] + increment_charge_value, 100)
                     update_communication_file(
                         data,
                         "present_soc",
@@ -183,7 +245,7 @@ def sync_with_server():
                     present_soc_input.config(state=tk.DISABLED)
                     if sync_time == large_delay_time:
                         sync_time = light_delay_time
-            elif not server_terminator:
+            elif not server_terminator and int(present_soc_t) != data["present_soc"]:
                 update_communication_file(
                     data, "present_soc", present_soc_input.get("1.0", "end-1c")
                 )
@@ -193,6 +255,12 @@ def sync_with_server():
     root.after(sync_time, sync_with_server)
 
 
+def create_or_clear_communication_file():
+    with open(communication_file, "w") as f:
+        json.dump(data, f)
+
+
+PORT = 8000
 delayed_run = False
 increment_charge_value = 10
 communication_file = "communication.json"
@@ -200,15 +268,18 @@ correct_sync_time = 500
 light_delay_time = 500
 large_delay_time = 6000
 sync_time = correct_sync_time
+data = {"present_soc": 10, "max_discharge_power": 10}
 
 # Load env environment
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
+create_or_clear_communication_file()
+start_server()
 
 root = tk.Tk()
 
 root.title("EVCC Application")
-root.geometry("820x850")
+root.geometry("850x850")
 
 client_button_text_status = ["Connect EV", "Disconnect EV"]
 
@@ -268,19 +339,11 @@ present_soc_input = tk.Text(user_inputs_frame, height=1)
 present_soc_label.grid(row=0, column=0, sticky="w")
 present_soc_input.grid(row=0, column=1, sticky="nsew")
 
-max_discharge_power_label = tk.Label(user_inputs_frame, text="Max Discharge Power")
+max_discharge_power_label = tk.Label(user_inputs_frame, text="Max Discharge Power (KW)")
 max_discharge_power_input = tk.Text(user_inputs_frame, height=1)
 
 max_discharge_power_label.grid(row=1, column=0, sticky="w")
 max_discharge_power_input.grid(row=1, column=1, sticky="nsew")
-
-max_charge_power_label = tk.Label(user_inputs_frame, text="Max Charge Power")
-max_charge_power_label.config(state=tk.DISABLED)
-max_charge_power_input = tk.Text(user_inputs_frame, height=1)
-max_charge_power_input.config(state=tk.DISABLED)
-max_charge_power_label.grid(row=2, column=0, sticky="w")
-max_charge_power_input.grid(row=2, column=1, sticky="nsew")
-
 
 client_response_box = tk.Text(root)
 client_response_box.grid(row=2, column=0, columnspan=2, sticky="nsew")

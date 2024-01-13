@@ -3,11 +3,11 @@ import os
 import dotenv
 import tkinter as tk
 from tkinter import ttk
-from ttkthemes import ThemedTk
 from threading import Thread
 import subprocess
 import time
 from tkinter import filedialog
+import requests
 
 
 def run_script(text_widget):
@@ -135,49 +135,35 @@ def message_log_exi_changed():
         save_env_variables("MESSAGE_LOG_EXI", "False")
 
 
-def update_communication_file(data, key, value):
-    with open(communication_file, "w") as f:
-        data[key] = int(value)
-        json.dump(data, f)
-
-
 def sync_with_client():
-    try:
-        with open(communication_file, "r") as f:
-            data = json.load(f)
-            if max_charge_power_input.get("1.0", "end-1c") == "":
-                max_charge_power_input.delete("1.0", tk.END)
-                max_charge_power_input.insert("1.0", data["max_charge_power"])
+    end_index = server_response_box.index("end-1c")
+    line_count = server_response_box.get("1.0", end_index).count("\n") + 1
+    if line_count > 26:
+        try:
+            response = requests.get(ev_hardware_address, proxies={})
+            response.raise_for_status()  # Raise an exception for HTTP errors (status code other than 2xx)
+
+            if response.status_code == 200:
+                data = response.json()
+                max_discharge_power_input.config(state="normal")
+                max_discharge_power_input.delete("1.0", tk.END)
+                max_discharge_power_input.insert("1.0", data["max_discharge_power"])
+                max_discharge_power_input.config(state="disabled")
+                present_soc_input.config(state="normal")
+                present_soc_input.delete("1.0", tk.END)
+                present_soc_input.insert("1.0", data["present_soc"])
+                present_soc_input.config(state="disabled")
             else:
-                update_communication_file(
-                    data,
-                    "max_charge_power",
-                    max_charge_power_input.get("1.0", "end-1c"),
-                )
-
-            max_discharge_power_input.config(state="normal")
-            max_discharge_power_input.delete("1.0", tk.END)
-            max_discharge_power_input.insert("1.0", data["max_discharge_power"])
-            max_discharge_power_input.config(state="disabled")
-            present_soc_input.config(state="normal")
-            present_soc_input.delete("1.0", tk.END)
-            present_soc_input.insert("1.0", data["present_soc"])
-            present_soc_input.config(state="disabled")
-
-    except FileNotFoundError:
-        tk.messagebox.showerror("Error", "File not found")
-    except Exception as e:
-        print("Error Happened", e)
+                print(f"Error: {response.status_code} - {response.text}")
+        except requests.ConnectionError as e:
+            print(e)
+            print(
+                "Failed to connect. Check the server address and make sure it's running."
+            )
     root.after(sync_time, sync_with_client)
 
 
-def create_or_clear_communication_file():
-    with open(communication_file, "w") as f:
-        json.dump(data, f)
-
-
-data = {"present_soc": 10, "max_discharge_power": 10, "max_charge_power": 20}
-communication_file = "communication.json"
+ev_hardware_address = "http://192.168.43.241:8000/"
 correct_sync_time = 500
 delayed_sync_time = 1500
 fake_sync_time = 4000
@@ -187,13 +173,12 @@ sync_time = correct_sync_time
 # Load env environment
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
-create_or_clear_communication_file()
 
 
 root = tk.Tk()
 
 root.title("SECC Application")
-root.geometry("820x850")
+root.geometry("850x850")
 
 
 server_button_text_states = ["Start SECC", "Stop SECC"]
@@ -254,7 +239,7 @@ present_soc_label.grid(row=1, column=0, sticky="w")
 present_soc_input.grid(row=1, column=1, sticky="nsew")
 
 
-max_discharge_power_label = tk.Label(user_inputs_frame, text="Max Discharge Power")
+max_discharge_power_label = tk.Label(user_inputs_frame, text="Max Discharge Power (KW)")
 max_discharge_power_label.config(state=tk.DISABLED)
 max_discharge_power_input = tk.Text(user_inputs_frame, height=1)
 max_discharge_power_input.config(state=tk.DISABLED)
