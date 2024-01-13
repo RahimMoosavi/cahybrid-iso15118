@@ -1,3 +1,4 @@
+import json
 import os
 import dotenv
 import tkinter as tk
@@ -6,6 +7,7 @@ from ttkthemes import ThemedTk
 from threading import Thread
 import subprocess
 import time
+from tkinter import filedialog
 
 
 def run_script(text_widget):
@@ -62,6 +64,16 @@ def on_closing():
     root.destroy()
 
 
+def save_communications(communications):
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".txt",
+        filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+    )
+    if file_path:
+        with open(file_path, "w") as file:
+            file.write(communications)
+
+
 server_terminator = None
 
 
@@ -72,6 +84,7 @@ def run_server():
         server_response_box.delete("1.0", "end")
         server_button.config(text=server_button_text_states[1])
         server_terminator = run_script(server_response_box)
+        change_all_input_status("disabled")
     else:
         server_button.config(state=tk.DISABLED)
         if server_terminator:
@@ -79,7 +92,20 @@ def run_server():
             server_terminator()
         server_button.config(state=tk.NORMAL)
         server_button.config(text=server_button_text_states[0])
+        save_communications(server_response_box.get("1.0", "end-1c"))
         server_response_box.delete("1.0", "end")
+        change_all_input_status("normal")
+        server_terminator = None
+
+
+def change_all_input_status(status):
+    max_charge_power_input.config(state=status)
+    max_charge_power_label.config(state=status)
+    charge_limit_input.config(state=status)
+    charge_limit_label.config(state=status)
+    message_log_json_checkbox.config(state=status)
+    message_log_exi_checkbox.config(state=status)
+    log_level_select.config(state=status)
 
 
 def save_env_variables(key, value):
@@ -88,7 +114,7 @@ def save_env_variables(key, value):
 
 
 def on_log_level_changed(*args):
-    selected_index = combobox.current()
+    selected_index = log_level_select.current()
     selected_value = log_level_options[selected_index]
     save_env_variables("LOG_LEVEL", selected_value)
 
@@ -102,21 +128,72 @@ def message_log_json_changed():
 
 
 def message_log_exi_changed():
-    if message_log_json_var.get():
+    if message_log_exi_var.get():
         save_env_variables("MESSAGE_LOG_EXI", "True")
 
     else:
         save_env_variables("MESSAGE_LOG_EXI", "False")
 
 
+def update_communication_file(data, key, value):
+    with open(communication_file, "w") as f:
+        data[key] = int(value)
+        json.dump(data, f)
+
+
+def sync_with_client():
+    try:
+        with open(communication_file, "r") as f:
+            data = json.load(f)
+            if max_charge_power_input.get("1.0", "end-1c") == "":
+                max_charge_power_input.delete("1.0", tk.END)
+                max_charge_power_input.insert("1.0", data["max_charge_power"])
+            else:
+                update_communication_file(
+                    data,
+                    "max_charge_power",
+                    max_charge_power_input.get("1.0", "end-1c"),
+                )
+
+            max_discharge_power_input.config(state="normal")
+            max_discharge_power_input.delete("1.0", tk.END)
+            max_discharge_power_input.insert("1.0", data["max_discharge_power"])
+            max_discharge_power_input.config(state="disabled")
+            present_soc_input.config(state="normal")
+            present_soc_input.delete("1.0", tk.END)
+            present_soc_input.insert("1.0", data["present_soc"])
+            present_soc_input.config(state="disabled")
+
+    except FileNotFoundError:
+        tk.messagebox.showerror("Error", "File not found")
+    except Exception as e:
+        print("Error Happened", e)
+    root.after(sync_time, sync_with_client)
+
+
+def create_or_clear_communication_file():
+    with open(communication_file, "w") as f:
+        json.dump(data, f)
+
+
+data = {"present_soc": 10, "max_discharge_power": 10, "max_charge_power": 20}
+communication_file = "communication.json"
+correct_sync_time = 500
+delayed_sync_time = 1500
+fake_sync_time = 4000
+sync_time = correct_sync_time
+
+
 # Load env environment
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
+create_or_clear_communication_file()
+
 
 root = tk.Tk()
 
 root.title("SECC Application")
-root.geometry("760x850")
+root.geometry("820x850")
 
 
 server_button_text_states = ["Start SECC", "Stop SECC"]
@@ -141,33 +218,54 @@ message_log_json_checkbox = ttk.Checkbutton(
 )
 message_log_json_checkbox.grid(row=0, column=0, sticky="w")
 message_log_exi_var = tk.BooleanVar(value=(os.environ["MESSAGE_LOG_EXI"]))
-message_log_json_checkbox = ttk.Checkbutton(
+message_log_exi_checkbox = ttk.Checkbutton(
     frame,
     text="MESSAGE LOG EXI",
     variable=message_log_exi_var,
     command=message_log_exi_changed,
 )
-message_log_json_checkbox.grid(row=1, column=0, sticky="w")
+message_log_exi_checkbox.grid(row=1, column=0, sticky="w")
 log_level_options = ["INFO", "DEBUG"]
 selected_option = tk.StringVar(
     value=log_level_options[log_level_options.index(os.environ["LOG_LEVEL"])]
 )
-combobox = ttk.Combobox(
+log_level_select = ttk.Combobox(
     frame, values=log_level_options, textvariable=selected_option, state="readonly"
 )
-combobox.grid(row=2, column=0, sticky="nsew")
-combobox.bind("<<ComboboxSelected>>", on_log_level_changed)
+log_level_select.grid(row=2, column=0, sticky="nsew")
+log_level_select.bind("<<ComboboxSelected>>", on_log_level_changed)
 
 # Inputs frame
 
 user_inputs_frame = ttk.Frame(root, padding=(10, 10, 10, 10))
 user_inputs_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
 user_inputs_frame.grid_columnconfigure(0, weight=1)
+
 charge_limit_label = tk.Label(user_inputs_frame, text="Charge Limit")
-charge_limit_input = tk.Text(user_inputs_frame, height=2)
+charge_limit_input = tk.Text(user_inputs_frame, height=1)
 charge_limit_label.grid(row=0, column=0, sticky="w")
 charge_limit_input.grid(row=0, column=1, sticky="nsew")
 
+present_soc_label = tk.Label(user_inputs_frame, text="Present SOC")
+present_soc_label.config(state=tk.DISABLED)
+present_soc_input = tk.Text(user_inputs_frame, height=1)
+present_soc_input.config(state=tk.DISABLED)
+present_soc_label.grid(row=1, column=0, sticky="w")
+present_soc_input.grid(row=1, column=1, sticky="nsew")
+
+
+max_discharge_power_label = tk.Label(user_inputs_frame, text="Max Discharge Power")
+max_discharge_power_label.config(state=tk.DISABLED)
+max_discharge_power_input = tk.Text(user_inputs_frame, height=1)
+max_discharge_power_input.config(state=tk.DISABLED)
+max_discharge_power_label.grid(row=2, column=0, sticky="w")
+max_discharge_power_input.grid(row=2, column=1, sticky="nsew")
+
+max_charge_power_label = tk.Label(user_inputs_frame, text="Max Charge Power")
+max_charge_power_input = tk.Text(user_inputs_frame, height=1)
+
+max_charge_power_label.grid(row=3, column=0, sticky="w")
+max_charge_power_input.grid(row=3, column=1, sticky="nsew")
 
 server_response_box = tk.Text(root)
 server_response_box.grid(row=2, column=0, columnspan=2, sticky="nsew")
@@ -175,5 +273,10 @@ server_response_box.grid(row=2, column=0, columnspan=2, sticky="nsew")
 
 root.grid_rowconfigure(2, weight=1)
 root.grid_columnconfigure(0, weight=1)
+
+
+sync_with_client()
+
+
 root.protocol("WM_DELETE_WINDOW", on_closing)
 root.mainloop()
