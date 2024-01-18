@@ -8,6 +8,7 @@ __pycache__/
 # .bkp files
 *.bkp
 *.txt
+*.zip
 # Dockerfiles inside evcc and secc
 iso15118/evcc/Dockerfile
 iso15118/secc/Dockerfile
