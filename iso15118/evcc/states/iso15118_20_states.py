@@ -100,6 +100,7 @@ from iso15118.shared.security import (
     load_priv_key,
 )
 from iso15118.shared.states import Terminate
+from iso15118.shared.messages.iso15118_20.common_types import DisplayParameters
 
 logger = logging.getLogger(__name__)
 
@@ -1004,6 +1005,9 @@ class PowerDelivery(StateEVCC):
                 bpt_dynamic_params=bpt_dynamic_params,
                 meter_info_requested=False,
             )
+            ac_charge_loop_req.display_parameters = (
+                ev_controller.get_display_parameters()
+            )
 
             self.create_next_message(
                 ACChargeLoop,
@@ -1325,6 +1329,9 @@ class ACChargeLoop(StateEVCC):
                 bpt_scheduled_params=bpt_scheduled_params,
                 bpt_dynamic_params=bpt_dynamic_params,
                 meter_info_requested=False,
+            )
+            ac_charge_loop_req.display_parameters = (
+                ev_controller.get_display_parameters()
             )
 
             self.create_next_message(

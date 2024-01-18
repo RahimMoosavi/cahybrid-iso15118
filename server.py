@@ -163,7 +163,8 @@ def sync_with_client():
     root.after(sync_time, sync_with_client)
 
 
-ev_hardware_address = "http://192.168.43.241:8000/"
+# ev_hardware_address = "http://192.168.43.241:8000/"
+ev_hardware_address = "http://localhost:8000/"
 correct_sync_time = 500
 delayed_sync_time = 1500
 fake_sync_time = 4000

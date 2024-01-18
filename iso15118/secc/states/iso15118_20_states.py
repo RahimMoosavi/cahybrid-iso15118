@@ -961,6 +961,7 @@ class ScheduleExchange(StateSECC):
             dynamic_params=params if control_mode == ControlMode.DYNAMIC else None,
         )
         evse_data_context = self.comm_session.evse_controller.evse_data_context
+
         evse_data_context.update_schedule_exchange_parameters(
             control_mode, schedule_exchange_res
         )
@@ -1410,10 +1411,11 @@ class ACChargeLoop(StateSECC):
             ac_charge_loop_req, service, control_mode
         )
 
+        t = self.comm_session.evse_controller.ev_data_context
+
         meter_info = None
         if ac_charge_loop_req.meter_info_requested:
             meter_info = await self.comm_session.evse_controller.get_meter_info_v20()
-
         evse_status: Optional[
             EVSEStatus
         ] = await self.comm_session.evse_controller.get_evse_status()

@@ -103,6 +103,8 @@ from iso15118.shared.messages.iso15118_20.dc import (
     ScheduledDCChargeLoopReqParams,
 )
 from iso15118.shared.network import get_nic_mac_address
+from iso15118.shared.messages.iso15118_20.common_types import DisplayParameters
+
 
 logger = logging.getLogger(__name__)
 
@@ -531,6 +533,7 @@ class SimEVController(EVControllerInterface):
             return False
         else:
             self.charging_loop_cycles += 1
+            self._soc += 10
             # The line below can just be called once process_message in all states
             # are converted to async calls
             # await asyncio.sleep(0.5)
@@ -647,7 +650,7 @@ class SimEVController(EVControllerInterface):
             return dynamic_params
 
     # ============================================================================
-    # |                          DC-SPECIFIC FUNCTIONS                           |
+    # |                          DC-SPECIFIC FUNCTIONS                            |
     # ============================================================================
 
     async def get_dc_charge_params(self) -> DCEVChargeParams:
@@ -722,3 +725,19 @@ class SimEVController(EVControllerInterface):
     async def get_target_voltage(self) -> RationalNumber:
         """Overrides EVControllerInterface.get_target_voltage()."""
         return RationalNumber(exponent=3, value=20)
+
+    # Custom Code
+
+    def get_display_parameters(self):
+        return DisplayParameters(
+            present_soc=self._soc,
+            min_soc=None,
+            target_soc=None,
+            max_soc=None,
+            remaining_time_to_min_soc=None,
+            remaining_time_to_target_soc=None,
+            remaining_time_to_max_soc=None,
+            charging_complete=False,
+            battery_energy_capacity=None,
+            inlet_hot=True,
+        )

@@ -1,0 +1,13 @@
+{
+	"supportedProtocols": [
+		"ISO_15118_20_AC"
+	],
+	"supportedEnergyServices": [
+		"AC_BPT"
+	],
+	"isCertInstallNeeded": false,
+	"useTls": false,
+	"max_current": {
+		"value":32,
+		"multiplier":0}
+}
