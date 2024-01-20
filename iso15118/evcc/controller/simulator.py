@@ -120,10 +120,10 @@ class SimEVController(EVControllerInterface):
         self.precharge_loop_cycles: int = 0
         self.welding_detection_cycles: int = 0
         self._charging_is_completed = False
-        self._soc = 10
         # TODO: Custom Code
-        self._max_discharge_power = self.calculate_ev_max_discharge_power()
-        self._present_active_power = None
+        self._soc = self.get_present_soc()
+        self._max_discharge_power = self.get_max_discharge_power()
+        self._present_active_power = self.get_present_active_power()
         self._evse_max_charge_power = None
         self._evse_present_active_power = None
 
@@ -283,7 +283,7 @@ class SimEVController(EVControllerInterface):
         elif selected_service.service == ServiceV20.AC_BPT:
             return BPTACChargeParameterDiscoveryReqParams(
                 **(ac_cpd_params.dict()),
-                ev_max_discharge_power=self.get_ev_max_discharge_power(),
+                ev_max_discharge_power=self.get_max_discharge_power(),
                 ev_min_discharge_power=RationalNumber(exponent=0, value=100),
             )
         elif selected_service.service == ServiceV20.DC:
@@ -291,7 +291,7 @@ class SimEVController(EVControllerInterface):
         elif selected_service.service == ServiceV20.DC_BPT:
             return BPTDCChargeParameterDiscoveryReqParams(
                 **(dc_cpd_params.dict()),
-                ev_max_discharge_power=self.get_ev_max_discharge_power(),
+                ev_max_discharge_power=self.get_max_discharge_power(),
                 ev_min_discharge_power=RationalNumber(exponent=3, value=1),
                 ev_max_discharge_current=RationalNumber(exponent=0, value=11),
                 ev_min_discharge_current=RationalNumber(exponent=0, value=0),
@@ -622,7 +622,7 @@ class SimEVController(EVControllerInterface):
         """Overrides EVSControllerInterface.get_ac_charge_loop_params_v20()."""
         if control_mode == ControlMode.SCHEDULED:
             scheduled_params = ScheduledACChargeLoopReqParams(
-                ev_present_active_power=self.get_ev_present_active_power(),
+                ev_present_active_power=self.get_present_active_power(),
                 # Add more optional fields if wanted
             )
             if selected_service == ServiceV20.AC_BPT:
@@ -641,7 +641,7 @@ class SimEVController(EVControllerInterface):
                 ev_min_energy_request=RationalNumber(exponent=3, value=-20),
                 ev_max_charge_power=RationalNumber(exponent=3, value=300),
                 ev_min_charge_power=RationalNumber(exponent=0, value=100),
-                ev_present_active_power=self.get_ev_present_active_power(),
+                ev_present_active_power=self.get_present_active_power(),
                 ev_present_reactive_power=RationalNumber(exponent=3, value=20),
                 # Add more optional fields if wanted
             )
@@ -752,12 +752,12 @@ class SimEVController(EVControllerInterface):
     def get_present_soc(self):
         soc = self.calculate_present_soc()
         if soc is None:
-            return self._soc
+            return 10
         else:
             self._soc = soc
             return soc
 
-    def get_ev_max_discharge_power(self):
+    def get_max_discharge_power(self):
         dp = self.calculate_ev_max_discharge_power()
         if dp is None:
             return RationalNumber(exponent=3, value=11)
@@ -765,7 +765,7 @@ class SimEVController(EVControllerInterface):
             self._max_discharge_power = dp
             return dp
 
-    def get_ev_present_active_power(self):
+    def get_present_active_power(self):
         ap = self.calculate_ev_present_active_power()
         if ap is None:
             return RationalNumber(exponent=3, value=200)
@@ -792,7 +792,6 @@ class SimEVController(EVControllerInterface):
     # TODO: Needs implementation, Returns the present active power for ev
     def calculate_ev_present_active_power(self):
         return None
-
     # TODO: Needs implmentation, return all variable that gpio needs for calculating
     # Present SOC
     # EVSE Max Charge Power
