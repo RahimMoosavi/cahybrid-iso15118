@@ -121,6 +121,12 @@ class SimEVController(EVControllerInterface):
         self.welding_detection_cycles: int = 0
         self._charging_is_completed = False
         self._soc = 10
+        # TODO: Custom Code
+        self._max_discharge_power = self.calculate_ev_max_discharge_power()
+        self._present_active_power = None
+        self._evse_max_charge_power = None
+        self._evse_present_active_power = None
+
         self.dc_ev_charge_params: DCEVChargeParams = DCEVChargeParams(
             dc_max_current_limit=PVEVMaxCurrentLimit(
                 multiplier=-3, value=32000, unit=UnitSymbol.AMPERE
@@ -277,7 +283,7 @@ class SimEVController(EVControllerInterface):
         elif selected_service.service == ServiceV20.AC_BPT:
             return BPTACChargeParameterDiscoveryReqParams(
                 **(ac_cpd_params.dict()),
-                ev_max_discharge_power=RationalNumber(exponent=3, value=11),
+                ev_max_discharge_power=self.get_ev_max_discharge_power(),
                 ev_min_discharge_power=RationalNumber(exponent=0, value=100),
             )
         elif selected_service.service == ServiceV20.DC:
@@ -285,7 +291,7 @@ class SimEVController(EVControllerInterface):
         elif selected_service.service == ServiceV20.DC_BPT:
             return BPTDCChargeParameterDiscoveryReqParams(
                 **(dc_cpd_params.dict()),
-                ev_max_discharge_power=RationalNumber(exponent=3, value=11),
+                ev_max_discharge_power=self.get_ev_max_discharge_power(),
                 ev_min_discharge_power=RationalNumber(exponent=3, value=1),
                 ev_max_discharge_current=RationalNumber(exponent=0, value=11),
                 ev_min_discharge_current=RationalNumber(exponent=0, value=0),
@@ -533,7 +539,7 @@ class SimEVController(EVControllerInterface):
             return False
         else:
             self.charging_loop_cycles += 1
-            self._soc += 10
+            self.get_present_soc()
             # The line below can just be called once process_message in all states
             # are converted to async calls
             # await asyncio.sleep(0.5)
@@ -616,7 +622,7 @@ class SimEVController(EVControllerInterface):
         """Overrides EVSControllerInterface.get_ac_charge_loop_params_v20()."""
         if control_mode == ControlMode.SCHEDULED:
             scheduled_params = ScheduledACChargeLoopReqParams(
-                ev_present_active_power=RationalNumber(exponent=3, value=200),
+                ev_present_active_power=self.get_ev_present_active_power(),
                 # Add more optional fields if wanted
             )
             if selected_service == ServiceV20.AC_BPT:
@@ -635,7 +641,7 @@ class SimEVController(EVControllerInterface):
                 ev_min_energy_request=RationalNumber(exponent=3, value=-20),
                 ev_max_charge_power=RationalNumber(exponent=3, value=300),
                 ev_min_charge_power=RationalNumber(exponent=0, value=100),
-                ev_present_active_power=RationalNumber(exponent=3, value=200),
+                ev_present_active_power=self.get_ev_present_active_power(),
                 ev_present_reactive_power=RationalNumber(exponent=3, value=20),
                 # Add more optional fields if wanted
             )
@@ -729,8 +735,9 @@ class SimEVController(EVControllerInterface):
     # Custom Code
 
     def get_display_parameters(self):
+        soc = self.get_present_soc()
         return DisplayParameters(
-            present_soc=self._soc,
+            present_soc=soc,
             min_soc=None,
             target_soc=None,
             max_soc=None,
@@ -740,4 +747,62 @@ class SimEVController(EVControllerInterface):
             charging_complete=False,
             battery_energy_capacity=None,
             inlet_hot=True,
+        )
+
+    def get_present_soc(self):
+        soc = self.calculate_present_soc()
+        if soc is None:
+            return self._soc
+        else:
+            self._soc = soc
+            return soc
+
+    def get_ev_max_discharge_power(self):
+        dp = self.calculate_ev_max_discharge_power()
+        if dp is None:
+            return RationalNumber(exponent=3, value=11)
+        else:
+            self._max_discharge_power = dp
+            return dp
+
+    def get_ev_present_active_power(self):
+        ap = self.calculate_ev_present_active_power()
+        if ap is None:
+            return RationalNumber(exponent=3, value=200)
+        else:
+            self._present_active_power = ap
+            return ap
+
+    def update_evse_max_charge_power(self, evse_max_charge_power):
+        self._evse_max_charge_power = evse_max_charge_power
+
+    def update_evse_present_active_power(self, evse_present_active_power):
+        self._evse_present_active_power = evse_present_active_power
+
+    # GPIO CODE
+
+    # TODO: Needs implementation, Returns the current soc
+    def calculate_present_soc(self):
+        return None
+
+    # TODO: Needs implmentation, Returns the max discharge power variable for ev
+    def calculate_ev_max_discharge_power(self):
+        return None
+
+    # TODO: Needs implementation, Returns the present active power for ev
+    def calculate_ev_present_active_power(self):
+        return None
+
+    # TODO: Needs implmentation, return all variable that gpio needs for calculating
+    # Present SOC
+    # EVSE Max Charge Power
+    # EV Max discharge Power
+    # EVSE CHarge Power
+    def get_gpio_needed_values(self):
+        return (
+            self._soc,
+            self._max_discharge_power,
+            self._present_active_power,
+            self._evse_max_charge_power,
+            self._evse_present_active_power,
         )

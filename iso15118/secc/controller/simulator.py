@@ -17,6 +17,14 @@ from iso15118.secc.controller.evse_data import (
     EVSERatedLimits,
     EVSESessionLimits,
 )
+from iso15118.shared.messages.iso15118_20.ac import (
+    ACChargeParameterDiscoveryResParams,
+    BPTACChargeParameterDiscoveryResParams,
+    BPTDynamicACChargeLoopResParams,
+    BPTScheduledACChargeLoopResParams,
+    DynamicACChargeLoopResParams,
+    ScheduledACChargeLoopResParams,
+)
 from iso15118.secc.controller.interface import (
     AuthorizationResponse,
     EVDataContext,
@@ -250,6 +258,13 @@ class SimEVSEController(EVSEControllerInterface):
         super().__init__()
         self.ev_data_context = EVDataContext()
         self.evse_data_context = get_evse_context()
+
+        # TODO: Custom code
+        self._ev_soc = None
+        self._ev__max_discharge_power = None
+        self._ev_present_active_power = None
+        self._max_charge_power = self.get_max_charge_power()
+        self._present_active_power = self.get_present_active_power()
 
     def reset_ev_data_context(self):
         self.ev_data_context = EVDataContext()
@@ -797,7 +812,7 @@ class SimEVSEController(EVSEControllerInterface):
     ]:
         """Overrides EVSEControllerInterface.get_ac_charge_params_v20()."""
         ac_charge_parameter_discovery_res_params = ACChargeParameterDiscoveryResParams(
-            evse_max_charge_power=RationalNumber.get_rational_repr(30000),
+            evse_max_charge_power=self.get_max_charge_power(),
             evse_max_charge_power_l2=RationalNumber.get_rational_repr(30000),
             evse_max_charge_power_l3=RationalNumber.get_rational_repr(30000),
             evse_min_charge_power=RationalNumber.get_rational_repr(100),
@@ -806,7 +821,7 @@ class SimEVSEController(EVSEControllerInterface):
             evse_nominal_frequency=RationalNumber.get_rational_repr(50),
             max_power_asymmetry=RationalNumber.get_rational_repr(0),
             evse_power_ramp_limit=RationalNumber.get_rational_repr(100),
-            evse_present_active_power=RationalNumber.get_rational_repr(0),
+            evse_present_active_power=self.get_present_active_power(),
             evse_present_active_power_l2=RationalNumber.get_rational_repr(0),
             evse_present_active_power_l3=RationalNumber.get_rational_repr(0),
         )
@@ -1091,3 +1106,197 @@ class SimEVSEController(EVSEControllerInterface):
         @param last_message: The last message that was either sent/received.
         """
         logger.info(f"Session ended in {current_state} ({reason}).")
+
+    # ============================================================================
+    # |                          End of the simulator code                    |
+    # ============================================================================
+
+    # Custom Code
+
+    async def get_ac_charge_loop_params_v20(
+        self, control_mode: ControlMode, selected_service: ServiceV20
+    ) -> Union[
+        ScheduledACChargeLoopResParams,
+        BPTScheduledACChargeLoopResParams,
+        DynamicACChargeLoopResParams,
+        BPTDynamicACChargeLoopResParams,
+    ]:
+        """
+        Gets the parameters for the ACChargeLoopRes for the currently set control mode
+         and service.
+        Args:
+            control_mode: Control mode for this session - Scheduled/Dynamic
+            selected_service: Enum for this Service - AC/AC_BPT
+        Returns:
+            ChargeLoop params depending on the selected mode. Return object could be
+            one of the following types:
+            [
+                ScheduledACChargeLoopResParams,
+                BPTScheduledACChargeLoopResParams,
+                DynamicACChargeLoopResParams,
+                BPTDynamicACChargeLoopResParams,
+            ]
+        Relevant for:
+        - ISO 15118-20
+        """
+        """Get AC CL parameters 15118-20."""
+        evse_session_limits = self.evse_data_context.session_limits.ac_limits
+        # TODO: read the rated limits
+        # Active Power
+        target_active_power = evse_session_limits.max_charge_power
+        target_active_power_l2 = None
+        target_active_power_l3 = None
+        target_reactive_power = None
+        target_reactive_power_l2 = None
+        target_reactive_power_l3 = None
+        target_active_power_value = RationalNumber.get_rational_repr(
+            target_active_power
+        )
+        if evse_session_limits.max_charge_power_l2:
+            target_active_power_l2 = evse_session_limits.max_charge_power_l2
+            target_active_power_l2 = RationalNumber.get_rational_repr(
+                target_active_power_l2
+            )  # noqa
+        if evse_session_limits.max_charge_power_l3:
+            target_active_power_l3 = evse_session_limits.max_charge_power_l3
+            target_active_power_l3 = RationalNumber.get_rational_repr(
+                target_active_power_l3
+            )  # noqa
+        # Reactive Power
+        if evse_session_limits.max_charge_reactive_power:
+            target_reactive_power = evse_session_limits.max_charge_reactive_power
+            target_reactive_power = RationalNumber.get_rational_repr(
+                target_reactive_power
+            )  # noqa
+        if evse_session_limits.max_charge_reactive_power_l2:
+            target_reactive_power_l2 = evse_session_limits.max_charge_reactive_power_l2
+            target_reactive_power_l2 = RationalNumber.get_rational_repr(
+                target_reactive_power_l2
+            )
+        if evse_session_limits.max_charge_reactive_power_l3:
+            target_reactive_power_l3 = evse_session_limits.max_charge_reactive_power_l3
+            target_reactive_power_l3 = RationalNumber.get_rational_repr(
+                target_reactive_power_l3
+            )
+        # Present Power
+        self.evse_data_context.present_active_power = self.get_present_active_power()
+        present_active_power = self.evse_data_context.present_active_power
+        # present_active_power = RationalNumber.get_rational_repr(
+        #     present_active_power
+        # )  # noqa
+        present_active_power_l2 = self.evse_data_context.present_active_power_l2
+        present_active_power_l2 = RationalNumber.get_rational_repr(
+            present_active_power_l2
+        )  # noqa
+        present_active_power_l3 = self.evse_data_context.present_active_power_l3
+        present_active_power_l3 = RationalNumber.get_rational_repr(
+            present_active_power_l3
+        )  # noqa
+        if (
+            control_mode == ControlMode.DYNAMIC
+            and selected_service == ServiceV20.AC_BPT
+        ):
+            # BPT Dynamic Message
+            bpt_dynamic_params = BPTDynamicACChargeLoopResParams(
+                evse_target_active_power=target_active_power_value,
+                evse_target_active_power_l2=target_active_power_l2,
+                evse_target_active_power_l3=target_active_power_l3,
+                evse_target_reactive_power=target_reactive_power,
+                evse_target_reactive_power_l2=target_reactive_power_l2,
+                evse_target_reactive_power_l3=target_reactive_power_l3,
+                evse_present_active_power=present_active_power,
+                evse_present_active_power_l2=present_active_power_l2,
+                evse_present_active_power_l3=present_active_power_l3,
+            )
+            return bpt_dynamic_params
+        elif (
+            control_mode == ControlMode.SCHEDULED
+            and selected_service == ServiceV20.AC_BPT
+        ):
+            bpt_scheduled_params = BPTScheduledACChargeLoopResParams(
+                evse_target_active_power=target_active_power_value,
+                evse_target_active_power_l2=target_active_power_l2,
+                evse_target_active_power_l3=target_active_power_l3,
+                evse_target_reactive_power=target_reactive_power,
+                evse_target_reactive_power_l2=target_reactive_power_l2,
+                evse_target_reactive_power_l3=target_reactive_power_l3,
+                evse_present_active_power=present_active_power,
+                evse_present_active_power_l2=present_active_power_l2,
+                evse_present_active_power_l3=present_active_power_l3,
+            )
+            return bpt_scheduled_params
+        elif control_mode == ControlMode.DYNAMIC and selected_service == ServiceV20.AC:
+            dynamic_params = DynamicACChargeLoopResParams(
+                evse_target_active_power=target_active_power_value,
+                evse_target_active_power_l2=target_active_power_l2,
+                evse_target_active_power_l3=target_active_power_l3,
+                evse_target_reactive_power=target_reactive_power,
+                evse_target_reactive_power_l2=target_reactive_power_l2,
+                evse_target_reactive_power_l3=target_reactive_power_l3,
+                evse_present_active_power=present_active_power,
+                evse_present_active_power_l2=present_active_power_l2,
+                evse_present_active_power_l3=present_active_power_l3,
+            )
+            return dynamic_params
+        else:
+            scheduled_params = ScheduledACChargeLoopResParams(
+                evse_target_active_power=target_active_power_value,
+                evse_target_active_power_l2=target_active_power_l2,
+                evse_target_active_power_l3=target_active_power_l3,
+                evse_target_reactive_power=target_reactive_power,
+                evse_target_reactive_power_l2=target_reactive_power_l2,
+                evse_target_reactive_power_l3=target_reactive_power_l3,
+                evse_present_active_power=present_active_power,
+                evse_present_active_power_l2=present_active_power_l2,
+                evse_present_active_power_l3=present_active_power_l3,
+            )
+            return scheduled_params
+
+    def update_ev_soc(self, ev_soc):
+        self._ev_soc = ev_soc
+
+    def update_ev_max_discharge_power(self, ev_max_discharge_power):
+        self._ev_max_discharge_power = ev_max_discharge_power
+
+    def update_ev_present_active_power(self, ev_present_active_power):
+        self._ev_present_active_power = ev_present_active_power
+
+    def get_max_charge_power(self):
+        mcp = self.calculate_max_charge_power()
+        if mcp is None:
+            return RationalNumber.get_rational_repr(30000)
+        else:
+            self._max_charge_power = mcp
+            return mcp
+
+    def get_present_active_power(self):
+        pap = self.calculate_present_active_power()
+        if pap is None:
+            return RationalNumber.get_rational_repr(0)
+        else:
+            self._present_active_power = pap
+            return pap
+
+    # GPIO Code
+
+    # TODO: Needs Implementation, returns the max charge power
+    def calculate_max_charge_power(self):
+        return None
+
+    # TODO: Needs Implementation, return the evse charge power
+    def calculate_present_active_power(self):
+        return None
+
+    # TODO: Needs implmentation, return all variable that gpio needs for calculating
+    # Present SOC
+    # EVSE Max Charge Power
+    # EV Max discharge Power
+    # EVSE Charge Power
+    def get_gpio_needed_values(self):
+        return (
+            self._ev_soc,
+            self._ev_max_discharge_power,
+            self._ev_present_active_power,
+            self._max_charge_power,
+            self._present_active_power,
+        )

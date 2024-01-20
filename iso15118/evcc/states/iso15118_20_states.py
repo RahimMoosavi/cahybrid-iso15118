@@ -1194,7 +1194,16 @@ class ACChargeParameterDiscovery(StateEVCC):
         msg: V2GMessageV20 = self.check_msg_v20(message, ACChargeParameterDiscoveryRes)
         if not msg:
             return
-
+        # TODO: Custom Code
+        ac_charge_parameter_discovery_res: ACChargeParameterDiscoveryRes = cast(
+            ACChargeParameterDiscoveryRes, msg
+        )
+        self.comm_session.ev_controller.update_evse_max_charge_power(
+            ac_charge_parameter_discovery_res.bpt_ac_params.evse_max_charge_power
+        )
+        self.comm_session.ev_controller.update_evse_present_active_power(
+            ac_charge_parameter_discovery_res.bpt_ac_params.evse_present_active_power
+        )
         # TODO Act upon the possible negative response codes in ac_cpd_res
 
         self.comm_session.ongoing_schedule_exchange_req = (
@@ -1261,6 +1270,9 @@ class ACChargeLoop(StateEVCC):
             return
 
         ac_charge_loop_res: ACChargeLoopRes = cast(ACChargeLoopRes, msg)
+        self.comm_session.ev_controller.update_evse_present_active_power(
+            ac_charge_loop_res.bpt_scheduled_params.evse_present_active_power
+        )
 
         # Before checking if we should continue charging,
         # check if SECC requested a renegotiation.

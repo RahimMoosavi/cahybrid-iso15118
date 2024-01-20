@@ -1314,6 +1314,10 @@ class ACChargeParameterDiscovery(StateSECC):
         ac_cpd_req: ACChargeParameterDiscoveryReq = cast(
             ACChargeParameterDiscoveryReq, msg
         )
+        # TODO: Custom Code
+        self.comm_session.evse_controller.update_ev_max_discharge_power(
+            ac_cpd_req.bpt_ac_params.ev_max_discharge_power
+        )
 
         energy_service = self.comm_session.selected_energy_service.service
         params = None
@@ -1404,6 +1408,14 @@ class ACChargeLoop(StateSECC):
             return
 
         ac_charge_loop_req: ACChargeLoopReq = cast(ACChargeLoopReq, msg)
+        # TODO: Custom Code
+        self.comm_session.evse_controller.update_ev_soc(
+            ac_charge_loop_req.display_parameters.present_soc
+        )
+        self.comm_session.evse_controller.update_ev_present_active_power(
+            ac_charge_loop_req.bpt_scheduled_params.ev_present_active_power
+        )
+
         service = self.comm_session.selected_energy_service.service
         control_mode = self.comm_session.control_mode
 
