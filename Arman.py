@@ -1,5 +1,4 @@
 import Adafruit_MCP4725
-# Import the ADS1x15 module.
 import Adafruit_ADS1x15
 import time
 import board
@@ -45,4 +44,6 @@ while True:
         else:
             green_led.value = True
         ##time.sleep(0.1)
+            
+
             
