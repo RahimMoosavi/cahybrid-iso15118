@@ -779,20 +779,20 @@ class SimEVController(EVControllerInterface):
     def update_evse_present_active_power(self, evse_present_active_power):
         self._evse_present_active_power = evse_present_active_power
 
-    # GPIO CODE
+    # GPIO CODE by ARMAN
 
-    # TODO: Needs implementation, Returns the current soc
+    # TODO: Here you need to send and receive the present_soc of EV to and from the gpio
     def calculate_present_soc(self):
         return None
 
-    # TODO: Needs implmentation, Returns the max discharge power variable for ev
+    # TODO: Here you need to send and receive the max_discharge_power of EV to and from the gpio
     def calculate_ev_max_discharge_power(self):
         return None
 
-    # TODO: Needs implementation, Returns the present active power for ev
+    # TODO: Here you need to send and receive the present_active_power of EV to and from the gpio
     def calculate_ev_present_active_power(self):
         return None
-    # TODO: Needs implmentation, return all variable that gpio needs for calculating
+    # TODO: Here you can access the current values of these variables in the EVCC
     # Present SOC
     # EVSE Max Charge Power
     # EV Max discharge Power

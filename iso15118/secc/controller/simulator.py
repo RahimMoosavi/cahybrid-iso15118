@@ -1277,17 +1277,17 @@ class SimEVSEController(EVSEControllerInterface):
             self._present_active_power = pap
             return pap
 
-    # GPIO Code
+    # GPIO Code by ARMAN
 
-    # TODO: Needs Implementation, returns the max charge power
+    # TODO: Here you need to send and receive the max_charge_power of EV to and from the gpio
     def calculate_max_charge_power(self):
         return None
 
-    # TODO: Needs Implementation, return the evse charge power
+    # TODO: Here you need to send and receive the present_soc of EV to and from the gpio
     def calculate_present_active_power(self):
         return None
 
-    # TODO: Needs implmentation, return all variable that gpio needs for calculating
+    # TODO: Here you can access the current values of these variables in the EVCC
     # Present SOC
     # EVSE Max Charge Power
     # EV Max discharge Power
