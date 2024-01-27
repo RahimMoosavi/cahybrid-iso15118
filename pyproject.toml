@@ -21,6 +21,9 @@ py4j = "^0.10.9"
 types-toml = "^0.10.8.7"
 mypy-extensions = "^1.0.0"
 types-psutil = "^5.9.5.16"
+adafruit-mcp4725 = "^1.0.4"
+adafruit-ads1x15 = "^1.0.2"
+adafruit-blinka = "^8.31.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.1"
