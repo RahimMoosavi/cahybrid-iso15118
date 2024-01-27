@@ -30,20 +30,20 @@ class Arman:
         return self.adc.read_adc(channel, gain=1)
     
    
-# Loop forever alternating through different voltage outputs.
-print('Press Ctrl-C to quit...')
-while True:
-    for i in range(0, 4096):
-        time.sleep(0.001)
-        print(f'ADC ch2 voltage is {adc.read_adc(2, gain=GAIN)}')
-        time.sleep(0.001)
-        dac.set_voltage(i)
-        print(f'DAC voltage is {i}!')
-        if(int(i/100)%2 == 0):
-            green_led.value = False
-        else:
-            green_led.value = True
-        ##time.sleep(0.1)
+## Loop forever alternating through different voltage outputs.
+#print('Press Ctrl-C to quit...')
+#while True:
+#    for i in range(0, 4096):
+#        time.sleep(0.001)
+#        print(f'ADC ch2 voltage is {adc.read_adc(2, gain=GAIN)}')
+#        time.sleep(0.001)
+#        dac.set_voltage(i)
+#        print(f'DAC voltage is {i}!')
+#        if(int(i/100)%2 == 0):
+#            green_led.value = False
+#        else:
+#            green_led.value = True
+#        ##time.sleep(0.1)
             
 
             
