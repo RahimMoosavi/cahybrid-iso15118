@@ -6,7 +6,7 @@ EVControllerInterface.
 import logging
 import random
 from typing import List, Optional, Tuple, Union
-from Arman import Arman
+#from Arman import Arman
 from iso15118.evcc import EVCCConfig
 from iso15118.evcc.controller.interface import ChargeParamsV2, EVControllerInterface
 from iso15118.shared.exceptions import InvalidProtocolError, MACAddressNotFound
@@ -126,7 +126,7 @@ class SimEVController(EVControllerInterface):
         self._present_active_power = self.get_present_active_power()
         self._evse_max_charge_power = None
         self._evse_present_active_power = None
-        self._arman = Arman()
+        #self._arman = Arman()
 
         self.dc_ev_charge_params: DCEVChargeParams = DCEVChargeParams(
             dc_max_current_limit=PVEVMaxCurrentLimit(

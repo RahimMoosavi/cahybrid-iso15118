@@ -5,7 +5,7 @@ This module contains the code to retrieve (hardware-related) data from the EVSE
 import base64
 import logging
 import time
-from Arman import Arman
+#from Arman import Arman
 from typing import Dict, List, Optional, Union
 
 from iso15118.secc.controller.common import UnknownEnergyService
@@ -266,7 +266,7 @@ class SimEVSEController(EVSEControllerInterface):
         self._ev_present_active_power = None
         self._max_charge_power = self.get_max_charge_power()
         self._present_active_power = self.get_present_active_power()
-        self._arman = Arman()
+        #self._arman = Arman()
 
     def reset_ev_data_context(self):
         self.ev_data_context = EVDataContext()
